@@ -1,0 +1,235 @@
+# Payasam - Pi5 containers
+
+services:
+
+  flatnotes:
+    container_name: flatnotes
+    image: dullage/flatnotes:latest
+    environment:
+      PUID: 1000
+      PGID: 1000
+      FLATNOTES_AUTH_TYPE: none
+    volumes:
+      - /home/jb/flatnotes/data:/data
+    ports:
+      - "4554:8080"
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    volumes:
+      - /home/jb/npostgres-db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PW}
+    networks:
+      - nextcloud-jb-home
+    restart: unless-stopped
+
+  nextcloud:
+    image: nextcloud
+    container_name: nextcloud
+    hostname: payasam-pi5
+    ports:
+      - "8888:80"
+    volumes:
+      - /media/cloudssd:/external_data
+      - /home/jb/npostgres-db:/data
+      - /home/jb/nnextcloud-db:/var/www/html
+    networks:
+      - nextcloud-jb-home
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  calibre-web:
+    image: linuxserver/calibre-web
+    container_name: calibre-web
+    ports:
+      - "8083:8083"
+    environment:
+      - TZ=${TIMEZONE}
+    volumes:
+      - /home/jb/calibre-config:/config
+      - /media/cloudssd/calibre_library:/books
+    restart: unless-stopped
+
+  netspeed:
+    image: linuxserver/librespeed:latest
+    container_name: netspeed
+    ports:
+      - "7870:80"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TIMEZONE}
+      - PASSWORD=${NETSPEED_PW}
+    volumes:
+      - /home/jb/netspeed-config:/config
+    restart: unless-stopped
+
+  jellyfin:
+    image: linuxserver/jellyfin
+    container_name: jellyfin
+    ports:
+      - "8096:8096"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TIMEZONE}
+    volumes:
+      - /media/cloudssd/jellyfin/config:/config
+      - /media/cloudssd/jellyfin/music:/data/music
+      - /media/cloudssd/jellyfin/movies:/data/movies
+    restart: unless-stopped
+
+  fail2ban:
+    image: crazymax/fail2ban:latest
+    container_name: fail2ban
+    network_mode: "host"
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - "/home/jb/f2b:/data"
+      - "/var/log:/var/log:ro"
+      - "/home/jb/calibre-config/calibre-web.log:/calibre-web.log"
+    env_file:
+      - "/home/jb/dc/.env"
+    restart: unless-stopped
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    environment:
+      TZ: ${TIMEZONE}
+      WATCHTOWER_NOTIFICATIONS: shoutrrr
+      WATCHTOWER_NOTIFICATION_URL: "discord://${DISCORD_TOKEN}@${DISCORD_ID}?title=Watchtower"
+      WATCHTOWER_NOTIFICATIONS_HOSTNAME: ${HOSTNAME}
+      WATCHTOWER_NOTIFICATION_TITLE_TAG: 'Weekly Pi5-docker'
+      WATCHTOWER_NOTIFICATION_REPORT: "true"
+      WATCHTOWER_ROLLING_RESTART: "true"
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_NOTIFICATION_TEMPLATE: |
+        {{- if .Report -}}
+          {{- with .Report -}}
+        {{len .Scanned}} Scanned, {{len .Updated}} Updated, {{len .Failed}} Failed
+              {{- range .Updated}}
+        - {{.Name}} ({{.ImageName}}): {{.CurrentImageID.ShortID}} updated to {{.LatestImageID.ShortID}}
+              {{- end -}}
+              {{- range .Fresh}}
+        - {{.Name}} ({{.ImageName}}): {{.State}}
+            {{- end -}}
+            {{- range .Skipped}}
+        - {{.Name}} ({{.ImageName}}): {{.State}}: {{.Error}}
+            {{- end -}}
+            {{- range .Failed}}
+        - {{.Name}} ({{.ImageName}}): {{.State}}: {{.Error}}
+            {{- end -}}
+          {{- end -}}
+        {{- else -}}
+          {{range .Entries -}}{{.Message}}{{"\n"}}{{- end -}}
+        {{- end -}}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    #docker updates scheduled weekly on Thu at 3am
+    command: --schedule "0 0 3 * * 4"
+
+  grafana:
+    container_name: monitoring-grafana
+    image: grafana/grafana:latest
+    hostname: rpi-grafana
+    restart: unless-stopped
+    user: "472"
+    ports:
+      - "3000:3000"
+    env_file:
+      - /home/jb/grafana/.env
+    volumes:
+      - /home/jb/grafana/data:/var/lib/grafana
+      - /home/jb/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+
+  cadvisor:
+    container_name: monitoring-cadvisor
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    hostname: rpi-cadvisor
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    command:
+      - '-housekeeping_interval=15s'
+      - '-docker_only=true'
+      - '-store_container_labels=false'
+      - 'port=8081'
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+      - /etc/machine-id:/etc/machine-id:ro
+
+  node-exporter:
+    container_name: monitoring-node-exporter
+    image: prom/node-exporter:latest
+    hostname: rpi-exporter
+    restart: unless-stopped
+    network_mode: host
+    expose:
+      - 9100
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/host
+      - --collector.filesystem.ignored-mount-points
+      - ^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+      - /:/host:ro,rslave
+
+  prometheus:
+    container_name: monitoring-prometheus
+    image: prom/prometheus:latest
+    hostname: rpi-prometheus
+    restart: unless-stopped
+    user: "nobody"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=1y'
+      # set a size limit for the Prometheus database /!\
+      - '--storage.tsdb.retention.size=4GB'
+    network_mode: host
+    expose:
+      - 9090
+    volumes:
+      - /home/jb/prometheus/data:/prometheus
+      - /home/jb/prometheus:/etc/prometheus/
+      - /home/jb/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - cadvisor
+      - node-exporter
+
+  alertmanager:
+    container_name: monitoring-alertmanager
+    image: prom/alertmanager:latest
+    restart: unless-stopped
+    network_mode: host
+    expose:
+      - 9093
+    volumes:
+      - /home/jb/alerting:/etc/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+
+networks:
+  nextcloud-jb-home:
+    driver: bridge
+    

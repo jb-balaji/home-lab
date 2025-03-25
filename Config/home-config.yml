@@ -1,0 +1,292 @@
+# Author: JB
+# Homepage configuration
+# See https://fontawesome.com/v5/search for icons options
+
+title: "Dashboard - OnPrem Server"
+subtitle: "Jayabalaji"
+logo: "assets/tools/png/slack.png"
+icon : "fas fa-cat"
+
+header: true
+footer: '<p>Created with <span class="has-text-danger">❤️</span> by Jayabalaji to track the digital life </p>.'
+connectivityCheck: true
+
+# Optional theme customization
+theme: default
+colors:
+  light:
+    highlight-primary: "#3367d6"
+    highlight-secondary: "#4285f4"
+    highlight-hover: "#5a95f5"
+    background: "#f5f5f5"
+    card-background: "#ffffff"
+    text: "#363636"
+    text-header: "#ffffff"
+    text-title: "#303030"
+    text-subtitle: "#424242"
+    card-shadow: rgba(0, 0, 0, 0.2)
+    link: "#3273dc"
+    link-hover: "#363636"
+  dark:
+    highlight-primary: "#3367d6"
+    highlight-secondary: "#4285f4"
+    highlight-hover: "#5a95f5"
+    background: "#131313"
+    card-background: "#2b2b2b"
+    text: "#eaeaea"
+    text-header: "#ffffff"
+    text-title: "#fafafa"
+    text-subtitle: "#f5f5f5"
+    card-shadow: rgba(0, 0, 0, 0.4)
+    link: "#3273dc"
+    link-hover: "#ffdd57"
+
+# Optional message
+message:
+  # showing Thirukkural as welcome message
+  # https://en.wikipedia.org/wiki/Kural
+  # prerequisite obtain app id from the below site
+  icon: "fas fa-gopuram"
+  url: https://getthirukkural.appspot.com/api/3.0/kural/rnd?appid=<add-app-key>&format=json
+  mapping:
+    style: "is-info"
+    title: 'athigaram'
+    content: 'urai2'
+  refreshInterval: 120000
+  style: "is-info"
+  title: "Thirukkural"
+  content: "Loading....."
+
+links:
+   - name: "Github"
+     icon: "fab fa-github"
+     url: "https://github.com/jb-balaji"
+     target: "_blank" # optional html a tag target attribute
+   - name: "Wiki"
+     icon: "fas fa-book"
+     url: "https://www.wikipedia.org/"
+     target: "_blank" # optional html a tag target attribute
+
+   - name: "Play Radio"
+     icon: "fas fa-radio"
+     url: "http://payasam.local:9000/hooks/play"
+     type: "api"
+     tag: "radio"
+     target: "_blank" # optional html a tag target attribute
+
+   - name: "Next Station"
+     icon: "fas fa-forward-step"
+     url: "http://payasam.local:9000/hooks/next"
+     type: "api"
+     tag: "radio"
+     target: "_blank" # optional html a tag target attribute
+
+   - name: "Stop Radio"
+     icon: "fas fa-stop"
+     url: "http://payasam.local:9000/hooks/stop"
+     type: "url"
+     tag: "radio"
+     target: "_blank" # optional html a tag target attribute
+
+# Services
+# First level array represent a group.
+# Leave only a "items" key if not using group (group name, icon & tagstyle are optional, section separation will not be displayed).
+services:
+
+  - name: "Cloud Application"
+    icon: "fas fa-cloud"
+    items:
+      - name: "Nextcloud"
+        logo: "assets/tools/png/nextcloud.png"
+        subtitle: "home cloud for all our data"
+        tag: "nextcloud"
+        keywords: "self hosted nextcloud"
+        url: "http://payasam.local:8888"
+        target: "_blank" # optional html a tag target attribute
+
+  - name: "Entertainment"
+    icon: "fas fa-headphones"
+    items:
+      - name: "Jellyfin"
+        logo: "assets/tools/png/jellyfin.png"
+        subtitle: "Movies and Music"
+        tag: "app"
+        keywords: "self hosted movies"
+        url: "http://payasam.local:8096"
+        target: "_blank" # optional html a tag target attribute
+        type: "Emby"
+        apikey: "<add-api-key>"
+        libraryType: "music"
+
+  - name: "Library"
+    icon: "fas fa-book-reader"
+    items:
+      - name: "eBooks"
+        logo: "assets/tools/png/calibreweb.png"
+        subtitle: "Collection of awesome books"
+        tag: "app"
+        keywords: "self hosted library"
+        url: "http://payasam.local:8083"
+        target: "_blank" # optional html a tag target attribute
+
+  - name: "System Monitoring"
+    icon: "fab fa-watchman-monitoring"
+    items:
+      - name: "Grafana - Pi cluster"
+        type: Prometheus
+        logo: "assets/tools/png/grafana.png"
+        subtitle: "Monitor resources and services"
+        tag: "grafana"
+        keywords: "grafana monitor"
+        url: "http://payasam.local:3000"
+        target: "_blank" # optional html a tag target attribute
+
+  - name: "Homelab Monitoring"
+    icon: "fas fa-user-doctor"
+    items:
+      - name: "Uptime Kuma"
+        logo: "assets/tools/png/uptimekuma.png"
+        subtitle: "Monitor services and notify downtime"
+        tag: "kuma"
+        keywords: "uptime kuma monitor"
+        url: "http://vadai.local:3001"
+        slug: "all"
+        type: "UptimeKuma"
+        target: "_blank" # optional html a tag target attribute
+        apikey: "<add-api-key>"
+
+  - name: "Blog"
+    icon: "fas fa-blog"
+    items:
+      - name: "Flatnotes"
+        logo: "assets/tools/png/flatnotes.png"
+        subtitle: "Daily Journal/Dairy"
+        tag: "tools"
+        keywords: "journal"
+        url: "http://payasam.local:4554"
+        target: "_blank" # optional html a tag target attribute
+      - name: "Memos"
+        logo: "assets/tools/png/memos.png"
+        subtitle: "Quick notes/Twitter"
+        tag: "tools"
+        keywords: "tweet"
+        url: "http://sundal.local:5230"
+        target: "_blank" # optional html a tag target attribute
+
+  - name: "Radio"
+    icon: "fas fa-radio"
+    items:
+      - name: "Play Radio"
+        logo: "assets/tools/png/radio.png"
+        subtitle: "Play internet radio in Pi5"
+        tag: "radio"
+        keywords: "music"
+        url: "http://payasam.local:9000/hooks/play"
+        target: "_blank" # optional html a tag target attribute
+      - name: "Next Station"
+        logo: "assets/tools/png/note.png"
+        subtitle: "Next station in the playlist"
+        tag: "radio"
+        keywords: "music"
+        url: "http://payasam.local:9000/hooks/next"
+        target: "_blank" # optional html a tag target attribute
+      - name: "Stop Radio"
+        logo: "assets/tools/png/silent.png"
+        subtitle: "Stop internet radio in Pi5"
+        tag: "radio"
+        keywords: "music"
+        url: "http://payasam.local:9000/hooks/stop"
+        target: "_blank" # optional html a tag target attribute
+
+  - name: "Network"
+    icon: "fas fa-network-wired"
+    items:
+      - name: "Adguard"
+        logo: "assets/tools/png/adguardhome.png"
+        subtitle: "DNS server that blocks ads"
+        tag: "DNS1"
+        url: "http://sundal.local"
+        target: "_blank"
+        type: "AdGuardHome"
+      - name: "PiHole (vadai)"
+        logo: "assets/tools/png/pihole.png"
+        subtitle: "secondary DNS server that blocks ads"
+        tag: "DNS2"
+        url: "http://vadai.local/admin"
+        apikey: "<add-api-key>"
+        target: "_blank"
+        type: "PiHole"
+
+  - name: "Speed Test"
+    icon: "fas fa-wifi"
+    items:
+      - name: "Netspeed Test A2"
+        logo: "assets/tools/png/librespeed.png"
+        subtitle: "Internet Speed Test on RpiA2"
+        tag: "tools"
+        keywords: "Librespeed test"
+        url: "http://sundal.local:7870"
+        target: "_blank" # optional html a tag target attribute
+      - name: "Netspeed Test A3"
+        logo: "assets/tools/png/librespeed.png"
+        subtitle: "Internet Speed Test on RpiA3"
+        tag: "tools"
+        keywords: "Librespeed test"
+        url: "http://vadai.local:7870"
+        target: "_blank" # optional html a tag target attribute
+      - name: "Netspeed Test pi5"
+        logo: "assets/tools/png/librespeed.png"
+        subtitle: "Internet Speed Test on Rpi5"
+        tag: "tools"
+        keywords: "Librespeed test"
+        url: "http://payasam.local:7870"
+        target: "_blank" # optional html a tag target attribute
+
+  - name: "Router"
+    icon: "fas fa-house-signal"
+    items:
+      - name: "FritzBox"
+        logo: "assets/tools/png/avmfritzbox.png"
+        subtitle: "Vodafone Fritzbox router management"
+        tag: "hardware"
+        tagstyle: "is-link"
+        keywords: "router"
+        url: "http://fritz.box"
+        target: "_blank" # optional html a tag target attribute
+
+  - name: "Extender"
+    icon: "fas fa-ethernet"
+    items:
+      - name: "TP Link RE550"
+        logo: "assets/tools/png/tplink.png"
+        subtitle: "TPLink RE550 wireless extender"
+        tag: "hardware"
+        keywords: "extender"
+        url: "http://vadai.local"
+        target: "_blank" # optional html a tag target attribute
+      - name: "TP Link PLC"
+        logo: "assets/tools/png/tplink.png"
+        subtitle: "TPLink PLC extender"
+        tag: "hardware"
+        keywords: "extender"
+        url: "http://tplink.local"
+        target: "_blank" # optional html a tag target attribute
+
+  - name: "Vault"
+    icon: "fas fa-user-secret"
+    items:
+      - name: "Password Manager"
+        logo: "assets/tools/png/bitwarden.png"
+        subtitle: "Instance of Vaultwarden in RpiA2"
+        tag: "docker"
+        keywords: "self hosted vaultwarden"
+        url: "https://sundal.local:8080"
+        target: "_blank" # optional html a tag target attribute
+      - name: "Password Manager"
+        logo: "assets/tools/png/vaultwarden.png"
+        subtitle: "Secondary Instance of Vaultwarden in RpiA3"
+        tag: "app"
+        tagstyle: "is-error"
+        keywords: "self hosted vaultwarden"
+        url: "https://vadai.local:8080"
+        target: "_blank" # optional html a tag target attribute
