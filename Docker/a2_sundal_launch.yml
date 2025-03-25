@@ -1,0 +1,147 @@
+# Sundal - A2 Containers
+
+services:
+  netspeed:
+    image: linuxserver/librespeed:latest
+    container_name: netspeed
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TIMEZONE}
+      - PASSWORD=${NETSPEED_PW}
+    ports:
+      - "7870:80"
+    volumes:
+      - /home/jb/netspeed-config:/config
+    restart: unless-stopped
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    environment:
+      TZ: ${TIMEZONE}
+      WATCHTOWER_NOTIFICATIONS: shoutrrr
+      WATCHTOWER_NOTIFICATION_URL: "discord://${DISCORD_TOKEN}@${DISCORD_ID}?title=Watchtower"
+      WATCHTOWER_NOTIFICATIONS_HOSTNAME: ${HOSTNAME}
+      WATCHTOWER_NOTIFICATION_TITLE_TAG: 'Weekly A2-docker'
+      WATCHTOWER_NOTIFICATION_REPORT: "true"
+      WATCHTOWER_ROLLING_RESTART: "true"
+      WATCHTOWER_NOTIFICATION_TEMPLATE: |
+        {{- if .Report -}}
+          {{- with .Report -}}
+        {{len .Scanned}} Scanned, {{len .Updated}} Updated, {{len .Failed}} Failed
+              {{- range .Updated}}
+        - {{.Name}} ({{.ImageName}}): {{.CurrentImageID.ShortID}} updated to {{.LatestImageID.ShortID}}
+              {{- end -}}
+              {{- range .Fresh}}
+        - {{.Name}} ({{.ImageName}}): {{.State}}
+            {{- end -}}
+            {{- range .Skipped}}
+        - {{.Name}} ({{.ImageName}}): {{.State}}: {{.Error}}
+            {{- end -}}
+            {{- range .Failed}}
+        - {{.Name}} ({{.ImageName}}): {{.State}}: {{.Error}}
+            {{- end -}}
+          {{- end -}}
+        {{- else -}}
+          {{range .Entries -}}{{.Message}}{{"\n"}}{{- end -}}
+        {{- end -}}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    #docker updates scheduled weekly on Fri at 3am
+    command: --schedule "0 0 3 * * 5" --cleanup
+
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+    volumes:
+      - /vw-data:/data
+      - /home/jb/vw-data/logs:/data/logs
+      - /etc/ssl/certs:/ssl
+    environment:
+      ROCKET_TLS: '{certs="/ssl/bitwarden.crt",key="/ssl/bitwarden.key"}'
+      SIGNUPS_ALLOWED: 'false'
+      SIGNUPS_VERIFY: 'true'
+      SHOW_PASSWORD_HINT: 'false'
+      LOG_FILE: "/data/logs/vaultwarden.log"
+      LOG_LEVEL: "warn"
+    env_file:
+      - "/home/jb/dc/.env"
+    ports:
+      - "8080:80"
+
+  fail2ban:
+    image: crazymax/fail2ban:latest
+    container_name: fail2ban
+    network_mode: "host"
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - "/home/jb/f2b:/data"
+      - "/var/log:/var/log:ro"
+      - "/home/jb/vw-data/logs:/vaultwarden"
+    env_file:
+      - "/home/jb/dc/.env"
+    restart: unless-stopped
+
+  adguardhome:
+    image: adguard/adguardhome
+    container_name: adguardhome
+    network_mode: host
+    volumes:
+      - /home/jb/adguard/work:/opt/adguardhome/work
+      - /home/jb/adguard/conf:/opt/adguardhome/conf
+    restart: unless-stopped
+
+  memos:
+    image: neosmemo/memos:stable
+    container_name: memos
+    volumes:
+      - ~/memos/:/var/opt/memos
+    ports:
+      - 5230:5230
+    restart: unless-stopped
+
+  cadvisor:
+    container_name: monitoring-cadvisor
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    hostname: a2-cadvisor
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    command:
+      - '-housekeeping_interval=15s'
+      - '-docker_only=true'
+      - '-store_container_labels=false'
+      - '-port=8081'
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+
+  node-exporter:
+    container_name: monitoring-node-exporter
+    image: prom/node-exporter:latest
+    hostname: a2-exporter
+    restart: unless-stopped
+    network_mode: host
+    expose:
+      - 9100:9100
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/host
+      - --collector.filesystem.ignored-mount-points
+      - ^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+      - /:/host:ro,rslave

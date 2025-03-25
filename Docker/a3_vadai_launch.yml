@@ -1,0 +1,171 @@
+#Vadai-a3 containers
+
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+    volumes:
+      - /vw-data:/data
+      - /home/jb/vw-data/logs:/data/logs
+      - /etc/ssl/certs:/ssl
+    environment:
+      ROCKET_TLS: '{certs="/ssl/bitwarden.crt",key="/ssl/bitwarden.key"}'
+      SIGNUPS_ALLOWED: 'false'
+      SIGNUPS_VERIFY: 'true'
+      SHOW_PASSWORD_HINT: 'false'
+      LOG_FILE: "/data/logs/vaultwarden.log"
+      LOG_LEVEL: "warn"
+    ports:
+      - "8080:80"
+
+  fail2ban:
+    image: crazymax/fail2ban:latest
+    container_name: fail2ban
+    network_mode: "host"
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - "/home/jb/f2b:/data"
+      - "/var/log:/var/log:ro"
+      - "/home/jb/vw-data/logs:/vaultwarden"
+    env_file:
+      - "/home/jb/dc/.env"
+    restart: unless-stopped
+
+  dashboard:
+    image: b4bz/homer:latest
+    container_name: dashboard
+    ports:
+      - "8082:8080"
+    volumes:
+      - /home/jb/homer-config:/www/assets
+    restart: unless-stopped
+
+  netspeed:
+    image: linuxserver/librespeed:latest
+    container_name: netspeed
+    ports:
+      - "7870:80"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TIMEZONE}
+      - PASSWORD=${NETSPEED_PW}
+    volumes:
+      - /home/jb/netspeed-config:/config
+    restart: unless-stopped
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:latest
+    container_name: uptime-kuma
+    volumes:
+      - /home/jb/uptime-kuma:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - 3001:3001
+    dns:
+      - 127.0.0.11
+      - 192.168.0.10
+      - 1.1.1.1
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    environment:
+      TZ: ${TIMEZONE}
+      WATCHTOWER_NOTIFICATIONS: shoutrrr
+      WATCHTOWER_NOTIFICATION_URL: "discord://${DISCORD_TOKEN}@${DISCORD_ID}?title=Watchtower"
+      WATCHTOWER_NOTIFICATIONS_HOSTNAME: ${HOSTNAME}
+      WATCHTOWER_NOTIFICATION_TITLE_TAG: 'Weekly A3-docker'
+      WATCHTOWER_NOTIFICATION_REPORT: "true"
+      WATCHTOWER_ROLLING_RESTART: "true"
+      WATCHTOWER_NOTIFICATION_TEMPLATE: |
+        {{- if .Report -}}
+          {{- with .Report -}}
+        {{len .Scanned}} Scanned, {{len .Updated}} Updated, {{len .Failed}} Failed
+              {{- range .Updated}}
+        - {{.Name}} ({{.ImageName}}): {{.CurrentImageID.ShortID}} updated to {{.LatestImageID.ShortID}}
+              {{- end -}}
+              {{- range .Fresh}}
+        - {{.Name}} ({{.ImageName}}): {{.State}}
+            {{- end -}}
+            {{- range .Skipped}}
+        - {{.Name}} ({{.ImageName}}): {{.State}}: {{.Error}}
+            {{- end -}}
+            {{- range .Failed}}
+        - {{.Name}} ({{.ImageName}}): {{.State}}: {{.Error}}
+            {{- end -}}
+          {{- end -}}
+        {{- else -}}
+          {{range .Entries -}}{{.Message}}{{"\n"}}{{- end -}}
+        {{- end -}}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    #docker updates scheduled weekly on Sat at 3am
+    command: --schedule "0 0 3 * * 6" --cleanup
+
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:latest
+    hostname: ${HOSTNAME}
+    network_mode: host
+    environment:
+      TZ: '${TIMEZONE}'
+      WEBPASSWORD: '${PIHOLE_PW}'
+    volumes:
+      - '/home/jb/pihole/etc-pihole:/etc/pihole'
+      - '/home/jb/pihole/etc-dnsmasq.d:/etc/dnsmasq.d'
+    dns:
+      - 127.0.0.1
+      - 192.168.0.6
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+#  start unbound separately
+
+  cadvisor:
+    container_name: monitoring-cadvisor
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    hostname: a3-cadvisor
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    command:
+      - '-housekeeping_interval=15s'
+      - '-docker_only=true'
+      - '-store_container_labels=false'
+      - '-port=8081'
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+
+  node-exporter:
+    container_name: monitoring-node-exporter
+    image: prom/node-exporter:latest
+    hostname: a3-exporter
+    restart: unless-stopped
+    network_mode: host
+    expose:
+      - 9100
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/host
+      - --collector.filesystem.ignored-mount-points
+      - ^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+      - /:/host:ro,rslave
